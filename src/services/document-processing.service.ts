@@ -227,15 +227,59 @@ export class DocumentProcessingService {
                 
                 // Extract text from all text elements on the page
                 if (page.Texts) {
+                  // Group texts by their Y position (line)
+                  const textsByLine = new Map<number, Array<{x: number, text: string}>>();
+                  
                   page.Texts.forEach((text: any) => {
-                    if (text.R) {
+                    if (text.R && text.R.length > 0) {
+                      const yPos = Math.round(text.y * 10) / 10; // Round to nearest 0.1 to group similar Y positions
+                      
+                      if (!textsByLine.has(yPos)) {
+                        textsByLine.set(yPos, []);
+                      }
+                      
+                      // Combine all text runs in this text element
+                      let combinedText = '';
                       text.R.forEach((r: any) => {
                         if (r.T) {
-                          // Decode URI component to get actual text
-                          extractedText += decodeURIComponent(r.T) + ' ';
+                          combinedText += decodeURIComponent(r.T);
                         }
                       });
+                      
+                      if (combinedText) {
+                        textsByLine.get(yPos)!.push({
+                          x: text.x,
+                          text: combinedText
+                        });
+                      }
                     }
+                  });
+                  
+                  // Sort lines by Y position and process each line
+                  const sortedLines = Array.from(textsByLine.entries()).sort((a, b) => a[0] - b[0]);
+                  
+                  sortedLines.forEach(([_, texts]) => {
+                    // Sort texts in line by X position
+                    texts.sort((a, b) => a.x - b.x);
+                    
+                    let lineText = '';
+                    let lastX = -1;
+                    
+                    texts.forEach((textItem, index) => {
+                      // Check if we need a space based on position
+                      if (lastX !== -1) {
+                        const gap = textItem.x - lastX;
+                        // Add space if there's a significant gap or if previous text doesn't end with space
+                        if (gap > 0.5 || (!lineText.endsWith(' ') && textItem.text.length > 1)) {
+                          lineText += ' ';
+                        }
+                      }
+                      
+                      lineText += textItem.text;
+                      lastX = textItem.x + textItem.text.length * 0.5; // Approximate end position
+                    });
+                    
+                    extractedText += lineText.trim() + '\n';
                   });
                 }
                 extractedText += '\n';
