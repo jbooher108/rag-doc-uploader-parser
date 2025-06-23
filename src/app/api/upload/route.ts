@@ -5,7 +5,7 @@ import { config } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; // Maximum allowed for Vercel Hobby plan
-
+//periodt
 export async function POST(request: NextRequest) {
   // Debug environment variables
   console.log('Environment variables check:');
