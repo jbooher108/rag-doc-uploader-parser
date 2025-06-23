@@ -90,6 +90,17 @@ export class PineconeService {
             source: document.metadata.source,
             originalFormat: document.metadata.originalFormat,
             uploadedAt: document.metadata.uploadedAt.toISOString(),
+            // Include all Shopify-specific metadata
+            ...(document.metadata.productType && { productType: document.metadata.productType }),
+            ...(document.metadata.productHandle && { productHandle: document.metadata.productHandle }),
+            ...(document.metadata.productTitle && { productTitle: document.metadata.productTitle }),
+            ...(document.metadata.vendor && { vendor: document.metadata.vendor }),
+            ...(document.metadata.type && { type: document.metadata.type }),
+            ...(document.metadata.tags && { tags: document.metadata.tags }),
+            ...(document.metadata.price && { price: document.metadata.price }),
+            ...(document.metadata.sku && { sku: document.metadata.sku }),
+            ...(document.metadata.inStock !== undefined && { inStock: document.metadata.inStock }),
+            ...(document.metadata.priorityScore !== undefined && { priorityScore: document.metadata.priorityScore }),
           },
         },
       ]);
@@ -124,6 +135,110 @@ export class PineconeService {
       return queryResponse.matches || [];
     } catch (error) {
       console.error('Error querying Pinecone:', error);
+      throw error;
+    }
+  }
+
+  // New method for product-aware queries with prioritization
+  async queryWithProductPriority(
+    embedding: number[],
+    topK: number = 10,
+    prioritizeProducts: boolean = true
+  ): Promise<any[]> {
+    try {
+      const index = this.pinecone.index(this.indexName);
+      
+      if (prioritizeProducts) {
+        // First, try to get Shopify products
+        const productQuery = await index.query({
+          vector: embedding,
+          topK: Math.ceil(topK * 0.6), // Get 60% from products
+          includeMetadata: true,
+          filter: {
+            source: { $eq: 'shopify' }
+          }
+        });
+
+        // Then get other relevant content
+        const generalQuery = await index.query({
+          vector: embedding,
+          topK: Math.ceil(topK * 0.4), // Get 40% from general content
+          includeMetadata: true,
+          filter: {
+            source: { $ne: 'shopify' }
+          }
+        });
+
+        // Combine results with products first
+        const allResults = [...(productQuery.matches || []), ...(generalQuery.matches || [])];
+        
+        // Sort by combined score (similarity + priority)
+        return allResults.sort((a, b) => {
+          const scoreA = (a.score || 0) + ((a.metadata?.priorityScore as number || 0) / 1000);
+          const scoreB = (b.score || 0) + ((b.metadata?.priorityScore as number || 0) / 1000);
+          return scoreB - scoreA;
+        }).slice(0, topK);
+      } else {
+        // Standard query without product prioritization
+        return this.query(embedding, topK);
+      }
+    } catch (error) {
+      console.error('Error querying Pinecone with product priority:', error);
+      throw error;
+    }
+  }
+
+  // Query specifically for products
+  async queryProducts(
+    embedding: number[],
+    topK: number = 5,
+    filters?: {
+      vendor?: string;
+      type?: string;
+      inStock?: boolean;
+      minPrice?: number;
+      maxPrice?: number;
+    }
+  ): Promise<any[]> {
+    try {
+      const index = this.pinecone.index(this.indexName);
+      
+      // Build filter object
+      const filter: any = {
+        source: { $eq: 'shopify' }
+      };
+
+      if (filters) {
+        if (filters.vendor) {
+          filter.vendor = { $eq: filters.vendor };
+        }
+        if (filters.type) {
+          filter.type = { $eq: filters.type };
+        }
+        if (filters.inStock !== undefined) {
+          filter.inStock = { $eq: filters.inStock };
+        }
+        if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+          filter.price = {};
+          if (filters.minPrice !== undefined) {
+            filter.price.$gte = filters.minPrice.toString();
+          }
+          if (filters.maxPrice !== undefined) {
+            filter.price.$lte = filters.maxPrice.toString();
+          }
+        }
+      }
+
+      const queryResponse = await index.query({
+        vector: embedding,
+        topK,
+        includeMetadata: true,
+        filter
+      });
+
+      return queryResponse.matches || [];
+    } catch (error) {
+      console.error('Error querying products from Pinecone:', error);
       throw error;
     }
   }

@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import { getPineconeService } from './pinecone.service';
 import { getOpenAIService } from './openai.service';
 import { getMediaProcessingService } from './media-processing.service';
+import { getShopifyCsvProcessorService } from './shopify-csv-processor.service';
 import { ProcessedDocument, FileType, DocumentMetadata } from '@/types';
 import { config } from '@/lib/config';
 
@@ -10,6 +11,7 @@ export class DocumentProcessingService {
   private pineconeService = getPineconeService();
   private openAIService = getOpenAIService();
   private mediaService = getMediaProcessingService();
+  private shopifyCsvProcessor = getShopifyCsvProcessorService();
 
   async processFile(
     buffer: Buffer,
@@ -23,6 +25,41 @@ export class DocumentProcessingService {
 
     try {
       onProgress?.('processing', 10);
+
+      // Check if it's a Shopify CSV
+      if (filename.toLowerCase().includes('shopify') && filename.endsWith('.csv')) {
+        onProgress?.('processing_shopify_csv', 20);
+        
+        // Process as Shopify CSV
+        const csvContent = buffer.toString('utf-8');
+        const shopifyProducts = await this.shopifyCsvProcessor.processShopifyCsv(csvContent, filename);
+        
+        onProgress?.('embedding', 50);
+        
+        // Process each product
+        for (let i = 0; i < shopifyProducts.length; i++) {
+          const product = shopifyProducts[i];
+          const embedding = await this.openAIService.createEmbedding(product.content);
+          await this.pineconeService.upsertDocument(product, embedding);
+          
+          onProgress?.('embedding', 50 + (i / shopifyProducts.length) * 40);
+        }
+        
+        onProgress?.('complete', 100);
+        
+        // Return a summary document
+        return {
+          id: `shopify-batch-${uuidv4()}`,
+          filename: filename,
+          content: `Processed ${shopifyProducts.length} Shopify products from CSV`,
+          metadata: {
+            source: 'shopify',
+            originalFormat: 'csv',
+            uploadedAt: new Date(),
+            processingSteps: ['shopify_csv_import', `processed_${shopifyProducts.length}_products`],
+          },
+        };
+      }
 
       // Save the uploaded file temporarily
       const uploadedFilePath = await this.mediaService.saveUploadedFile(

@@ -13,15 +13,26 @@ export interface ProcessedDocument {
   embedding?: number[];
 }
 
+export type FileType = 'text' | 'audio' | 'video';
+
 export interface DocumentMetadata {
-  source: 'text' | 'audio' | 'video';
+  source: FileType | 'shopify';
   originalFormat: string;
   uploadedAt: Date;
   processingSteps?: string[];
+  // Shopify-specific metadata
+  productType?: string;
+  productHandle?: string;
+  productTitle?: string;
+  vendor?: string;
+  type?: string;
+  tags?: string[];
+  price?: string;
+  sku?: string;
+  inStock?: boolean;
+  priorityScore?: number;
   duration?: number; // for audio/video files
 }
-
-export type FileType = 'text' | 'audio' | 'video';
 
 export interface UploadProgress {
   stage: 'uploading' | 'processing' | 'embedding' | 'storing' | 'complete';

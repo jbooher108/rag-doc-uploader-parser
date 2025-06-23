@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import FileUploader from '@/components/FileUploader';
 import MultiFileUploader from '@/components/MultiFileUploader';
+import { ShopifyUploader } from '@/components/ShopifyUploader';
 import { BatchUploadStats } from '@/types';
 
 export default function Home() {
   const [uploadedDocuments, setUploadedDocuments] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'single' | 'batch'>('batch');
+  const [activeTab, setActiveTab] = useState<'single' | 'batch' | 'shopify'>('batch');
   const [batchStats, setBatchStats] = useState<BatchUploadStats | null>(null);
 
   const handleUploadSuccess = (documentId: string) => {
@@ -71,6 +72,19 @@ export default function Home() {
               >
                 Batch Upload
               </button>
+              <button
+                onClick={() => setActiveTab('shopify')}
+                className={`
+                  px-6 py-2 rounded-md font-medium transition-all
+                  ${
+                    activeTab === 'shopify'
+                      ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }
+                `}
+              >
+                Shopify Import
+              </button>
             </div>
           </div>
         </div>
@@ -81,8 +95,10 @@ export default function Home() {
             onUploadSuccess={handleUploadSuccess}
             onUploadError={handleUploadError}
           />
-        ) : (
+        ) : activeTab === 'batch' ? (
           <MultiFileUploader onBatchComplete={handleBatchComplete} />
+        ) : (
+          <ShopifyUploader onUploadComplete={handleUploadSuccess} />
         )}
 
         {/* Error Message */}
@@ -189,10 +205,11 @@ export default function Home() {
               <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
                 <li>• <strong>Batch Upload:</strong> Perfect for initial mass upload of all your documents</li>
                 <li>• <strong>Single File:</strong> Quick upload for individual files</li>
+                <li>• <strong>Shopify Import:</strong> Upload product CSV exports for prioritized product search results</li>
                 <li>• <strong>Concurrent Processing:</strong> Uploads 3 files simultaneously for faster processing</li>
                 <li>• <strong>Auto-conversion:</strong> Videos → Audio → Text automatically</li>
                 <li>• <strong>Smart Chunking:</strong> Large documents are split into overlapping chunks</li>
-                <li>• <strong>Large Video Support:</strong> Videos over 100MB are automatically segmented into 10-minute chunks</li>
+                <li>• <strong>Product Prioritization:</strong> Shopify products automatically appear first in search results</li>
               </ul>
             </div>
           </div>

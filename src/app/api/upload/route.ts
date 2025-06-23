@@ -4,7 +4,7 @@ import { FileUploadResponse } from '@/types';
 import { config } from '@/lib/config';
 
 export const runtime = 'nodejs';
-export const maxDuration = 300; // 5 minutes for processing large files
+export const maxDuration = 60; // Maximum allowed for Vercel Hobby plan
 
 export async function POST(request: NextRequest) {
   // Debug environment variables
