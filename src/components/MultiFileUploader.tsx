@@ -164,6 +164,8 @@ const MultiFileUploader: React.FC<MultiFileUploaderProps> = ({
       return '🎥';
     } else if (['mp3', 'wav', 'm4a', 'ogg', 'flac'].includes(extension || '')) {
       return '🎵';
+    } else if (['csv', 'json'].includes(extension || '')) {
+      return '📊';
     } else {
       return '📄';
     }
@@ -225,7 +227,7 @@ const MultiFileUploader: React.FC<MultiFileUploaderProps> = ({
           ref={fileInputRef}
           type="file"
           onChange={handleFileInputChange}
-          accept=".txt,.md,.pdf,.doc,.docx,.mp3,.wav,.m4a,.ogg,.flac,.mp4,.avi,.mov,.mkv,.webm"
+          accept=".txt,.md,.pdf,.doc,.docx,.csv,.json,.mp3,.wav,.m4a,.ogg,.flac,.mp4,.avi,.mov,.mkv,.webm"
           className="hidden"
           multiple
         />
@@ -240,6 +242,7 @@ const MultiFileUploader: React.FC<MultiFileUploaderProps> = ({
           </p>
           <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
             <p>📄 Text files: max 100MB each</p>
+            <p>📊 CSV/JSON files: max 100MB each (auto-detected webpage data)</p>
             <p>🎵 Audio files: max 200MB each</p>
             <p>🎥 Video files: max 1GB each (auto-segmented if over 100MB)</p>
           </div>

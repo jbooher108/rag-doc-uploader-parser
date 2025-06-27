@@ -107,6 +107,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       return '🎥';
     } else if (['mp3', 'wav', 'm4a', 'ogg', 'flac'].includes(extension || '')) {
       return '🎵';
+    } else if (['csv', 'json'].includes(extension || '')) {
+      return '📊';
     } else {
       return '📄';
     }
@@ -131,7 +133,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           ref={fileInputRef}
           type="file"
           onChange={handleFileInputChange}
-          accept=".txt,.md,.pdf,.doc,.docx,.mp3,.wav,.m4a,.ogg,.flac,.mp4,.avi,.mov,.mkv,.webm"
+          accept=".txt,.md,.pdf,.doc,.docx,.csv,.json,.mp3,.wav,.m4a,.ogg,.flac,.mp4,.avi,.mov,.mkv,.webm"
           className="hidden"
         />
 

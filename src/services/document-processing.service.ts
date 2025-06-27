@@ -4,6 +4,7 @@ import { getPineconeService } from './pinecone.service';
 import { getOpenAIService } from './openai.service';
 import { getMediaProcessingService } from './media-processing.service';
 import { getShopifyCsvProcessorService } from './shopify-csv-processor.service';
+import { getWebpageCsvProcessorService } from './webpage-csv-processor.service';
 import { ProcessedDocument, FileType, DocumentMetadata } from '@/types';
 import { config } from '@/lib/config';
 
@@ -12,6 +13,7 @@ export class DocumentProcessingService {
   private openAIService = getOpenAIService();
   private mediaService = getMediaProcessingService();
   private shopifyCsvProcessor = getShopifyCsvProcessorService();
+  private webpageCsvProcessor = getWebpageCsvProcessorService();
 
   async processFile(
     buffer: Buffer,
@@ -59,6 +61,84 @@ export class DocumentProcessingService {
             processingSteps: ['shopify_csv_import', `processed_${shopifyProducts.length}_products`],
           },
         };
+      }
+
+      // Check if it's a webpage CSV or JSON
+      if (filename.endsWith('.csv') || filename.endsWith('.json')) {
+        const content = buffer.toString('utf-8');
+        
+        console.log(`Processing ${filename.endsWith('.csv') ? 'CSV' : 'JSON'} file: ${filename}`);
+        console.log(`File size: ${content.length} characters`);
+        console.log('Content preview:', content.substring(0, 200));
+        
+        // Try to detect if it's webpage data by looking for common webpage columns
+        const hasBodyHTML = content.includes('Body HTML');
+        const hasTitleAndAuthor = content.includes('Title') && content.includes('Author');
+        const hasHandleAndPublished = content.includes('Handle') && content.includes('Published At');
+        
+        console.log('Detection results:', { hasBodyHTML, hasTitleAndAuthor, hasHandleAndPublished });
+        
+        const isWebpageData = hasBodyHTML || hasTitleAndAuthor || hasHandleAndPublished;
+        
+        if (isWebpageData) {
+          console.log('✅ Detected as webpage data, processing...');
+          onProgress?.('processing_webpage_data', 20);
+          
+          let webpageDocuments: ProcessedDocument[];
+          
+          try {
+            if (filename.endsWith('.csv')) {
+              webpageDocuments = await this.webpageCsvProcessor.processWebpageCsv(content, filename);
+            } else {
+              webpageDocuments = await this.webpageCsvProcessor.processWebpageJson(content, filename);
+            }
+            
+            console.log(`✅ Successfully parsed ${webpageDocuments.length} webpages`);
+            
+            if (webpageDocuments.length === 0) {
+              throw new Error('No valid webpage data found in the file. Check that your CSV has the expected columns and published content.');
+            }
+            
+          } catch (parseError) {
+            console.error('Error parsing webpage data:', parseError);
+            throw new Error(`Failed to parse webpage data: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`);
+          }
+          
+          onProgress?.('embedding', 50);
+          
+          // Process each webpage
+          for (let i = 0; i < webpageDocuments.length; i++) {
+            const webpage = webpageDocuments[i];
+            try {
+              const embedding = await this.openAIService.createEmbedding(webpage.content);
+              await this.pineconeService.upsertDocument(webpage, embedding);
+              console.log(`✅ Processed webpage: ${webpage.metadata.productTitle || webpage.id}`);
+            } catch (embeddingError) {
+              console.error(`Error processing webpage ${webpage.id}:`, embeddingError);
+              // Continue with other webpages even if one fails
+            }
+            
+            onProgress?.('embedding', 50 + (i / webpageDocuments.length) * 40);
+          }
+          
+          onProgress?.('complete', 100);
+          
+          // Return a summary document
+          return {
+            id: `webpage-batch-${uuidv4()}`,
+            filename: filename,
+            content: `Processed ${webpageDocuments.length} webpages from ${filename.endsWith('.csv') ? 'CSV' : 'JSON'}`,
+            metadata: {
+              source: 'text',
+              originalFormat: filename.endsWith('.csv') ? 'csv' : 'json',
+              uploadedAt: new Date(),
+              processingSteps: ['webpage_import', `processed_${webpageDocuments.length}_webpages`],
+            },
+          };
+        } else {
+          console.log('❌ Not detected as webpage data, will process as regular text file');
+          console.log('💡 Tip: Make sure your CSV has columns like "Body HTML", "Title", "Author", "Handle", or "Published At"');
+        }
       }
 
       // Save the uploaded file temporarily

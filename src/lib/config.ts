@@ -13,7 +13,7 @@ export const config = {
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '104857600'), // 100MB default
     maxVideoFileSize: parseInt(process.env.MAX_VIDEO_FILE_SIZE || '1073741824'), // 1GB default for videos
     maxAudioFileSize: parseInt(process.env.MAX_AUDIO_FILE_SIZE || '209715200'), // 200MB default for audio
-    allowedTextFormats: ['txt', 'md', 'pdf', 'doc', 'docx', 'csv'],
+    allowedTextFormats: ['txt', 'md', 'pdf', 'doc', 'docx', 'csv', 'json'],
     allowedAudioFormats: ['mp3', 'wav', 'm4a', 'ogg', 'flac'],
     allowedVideoFormats: ['mp4', 'avi', 'mov', 'mkv', 'webm'],
   },
