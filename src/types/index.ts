@@ -32,6 +32,7 @@ export interface DocumentMetadata {
   inStock?: boolean;
   priorityScore?: number;
   duration?: number; // for audio/video files
+  url?: string; // for Shopify product URLs
 }
 
 export interface UploadProgress {
