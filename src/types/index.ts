@@ -27,7 +27,7 @@ export interface DocumentMetadata {
   vendor?: string;
   type?: string;
   tags?: string[];
-  price?: string;
+  price?: number;
   sku?: string;
   inStock?: boolean;
   priorityScore?: number;
