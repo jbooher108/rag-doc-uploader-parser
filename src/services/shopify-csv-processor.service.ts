@@ -56,6 +56,17 @@ export class ShopifyCsvProcessorService {
 
       const processedDocuments: ProcessedDocument[] = [];
 
+      // Build a map of first non-empty price per product handle
+      const handleToPrice: Record<string, number | undefined> = {};
+      for (const product of records) {
+        if (!handleToPrice[product.Handle] && product['Variant Price']) {
+          const parsed = parseFloat(product['Variant Price'].replace(/[^0-9.]/g, ''));
+          if (!isNaN(parsed)) {
+            handleToPrice[product.Handle] = parsed;
+          }
+        }
+      }
+
       for (const product of records) {
         // Skip draft or archived products
         if (product.Status && product.Status.toLowerCase() !== 'active') {
@@ -68,6 +79,9 @@ export class ShopifyCsvProcessorService {
           console.log(`Skipping product without title: ${product.Handle}`);
           continue;
         }
+
+        // Use the first non-empty price for this handle
+        const price = handleToPrice[product.Handle];
 
         // Create a natural language description of the product
         const content = this.formatProductAsNaturalLanguage(product);
@@ -88,7 +102,7 @@ export class ShopifyCsvProcessorService {
             vendor: 'Lotus Wei', // Default vendor since it's not in CSV
             type: product.Type,
             tags: product.Tags?.split(',').map(t => t.trim()).filter(t => t.length > 0),
-            price: product['Variant Price'] ? parseFloat(product['Variant Price'].replace(/[^0-9.]/g, '')) : undefined,
+            price: price,
             sku: product.Handle, // Use handle as SKU since no SKU field
             inStock: true, // Assume in stock since no inventory field
             url: product.URL,
@@ -97,7 +111,7 @@ export class ShopifyCsvProcessorService {
           },
         };
 
-        console.log(`Processed product: ${product.Title}`);
+        console.log(`Processed product: ${product.Title}, Price: ${product['Variant Price']}, Assigned: ${price}`);
         processedDocuments.push(document);
       }
 
