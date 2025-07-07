@@ -88,7 +88,7 @@ export class ShopifyCsvProcessorService {
             vendor: 'Lotus Wei', // Default vendor since it's not in CSV
             type: product.Type,
             tags: product.Tags?.split(',').map(t => t.trim()).filter(t => t.length > 0),
-            price: product['Variant Price'] ? parseFloat(product['Variant Price']) : undefined,
+            price: product['Variant Price'] ? parseFloat(product['Variant Price'].replace(/[^0-9.]/g, '')) : undefined,
             sku: product.Handle, // Use handle as SKU since no SKU field
             inStock: true, // Assume in stock since no inventory field
             url: product.URL,
