@@ -27,11 +27,12 @@ export interface DocumentMetadata {
   vendor?: string;
   type?: string;
   tags?: string[];
-  price?: string;
+  price?: number;
   sku?: string;
   inStock?: boolean;
   priorityScore?: number;
   duration?: number; // for audio/video files
+  url?: string; // for Shopify product URLs
 }
 
 export interface UploadProgress {
